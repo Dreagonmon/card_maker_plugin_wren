@@ -229,10 +229,16 @@ export class WASMEnv extends EventTarget {
         if (!this.wasmModule) {
             throw Error("WebAssembly module is not initialized, compile first.");
         }
-        this.providedMemmory = new WebAssembly.Memory({ initial: 64, maximum: 64 }); // 4mb
+        // Only inject env.memory when the module actually imports it
+        // (exported-memory modules must not depend on host sizing; the
+        // module's own memory is read back via exports.memory in getMemory).
+        const importsMemory = WebAssembly.Module.imports(this.wasmModule)
+            .some(i => i.module === "env" && i.name === "memory" && i.kind === "memory");
+        if (importsMemory)
+            this.providedMemmory = new WebAssembly.Memory({ initial: 64, maximum: 64 }); // 4mb
         this.wasmInstance = await WebAssembly.instantiate(this.wasmModule, {
             env: {
-                memory: this.providedMemmory,
+                ...(this.providedMemmory ? { memory: this.providedMemmory } : {}),
                 wasmenv_clock_ms: this.api_wasmenv_clock_ms.bind(this),
                                                           wasmenv_time_ms: this.api_wasmenv_time_ms.bind(this),
                                                           wasmenv_abort: this.api_wasmenv_abort.bind(this),

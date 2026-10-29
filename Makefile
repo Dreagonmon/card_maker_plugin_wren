@@ -58,7 +58,11 @@ CFLAGS += -ffreestanding
 CFLAGS += -fvisibility=hidden
 CFLAGS += -ffunction-sections
 CFLAGS += -fdata-sections
+ifdef DEBUG
+CFLAGS += -O1 -g3 -DDEBUG
+else
 CFLAGS += -flto=full
+endif
 CFLAGS += -foptimize-sibling-calls
 # wasm3 support features
 # CFLAGS += -mmutable-globals
@@ -78,11 +82,20 @@ endif
 
 # link
 LFLAGS += --no-entry
-LFLAGS += --strip-all
 LFLAGS += --gc-sections
+# memory: the module owns its memory and exports it to the host
+# (host reads exports.memory). Importing host memory is fragile: the
+# imported memory type (min/max pages) must match exactly or instantiation
+# fails. lld>=19 needs --export-memory=memory; lld14 exports memory by
+# default and rejects the flag, so probe and add it only when supported.
+LD_EXPORT_MEMORY := $(shell $(LD) --export-memory=memory --version >/dev/null 2>&1 && echo --export-memory=memory)
+LFLAGS += $(LD_EXPORT_MEMORY)
+ifdef DEBUG
+# keep symbols & names for readable wasm stack traces
+else
+LFLAGS += --strip-all
 LFLAGS += --lto-O3
-# stack and memory size
-# (lld>=19: --export-memory=memory; lld14 exports memory by default)
+endif
 LFLAGS += --stack-first
 LFLAGS += -z stack-size=262144
 LFLAGS += --initial-memory=4194304 # 4M
