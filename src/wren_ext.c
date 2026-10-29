@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <wasmenv.h>
 
 #define SMALL_BUF_SIZE (256)
 
@@ -16,7 +17,7 @@ static const char *CARDMAKER_MODULE_SOURCE =
     "  foreign static setNum(name, value)\n"
     "  foreign static getStr(name)\n"
     "  foreign static getNum(name)\n"
-    "  static memFree() { return 0 }\n"
+    "  foreign static memFree()\n"
     "}\n";
 
 // ---------------------------
@@ -34,8 +35,11 @@ static void *reallocate(void *memory, size_t newSize, void *userData) {
 
 static void writeFn(WrenVM *v, const char *text) {
   (void)v;
-  fputs(text, stdout);
-  fflush(stdout);
+  // No fputs/fflush in the minimal libc; emit raw UTF-8 bytes, the host
+  // wasmenv decodes them back into codepoints.
+  for (const unsigned char *p = (const unsigned char *)text; *p; p++) {
+    wasmenv_putc(*p);
+  }
 }
 
 // Read a vfile fully into a malloc'ed NUL-terminated buffer. NULL on error.
@@ -142,6 +146,12 @@ static void cm_getNum(WrenVM *v) {
   wrenSetSlotDouble(v, 0, value);
 }
 
+static void cm_memFree(WrenVM *v) {
+  // No pair allocator in wren; report wasm linear memory pages * 64KiB
+  // so scripts have *some* memory gauge.
+  wrenSetSlotDouble(v, 0, (double)__builtin_wasm_memory_size(0) * 65536.0);
+}
+
 static WrenForeignMethodFn bindForeignMethodFn(WrenVM *v,
                                                const char *module,
                                                const char *className,
@@ -155,7 +165,20 @@ static WrenForeignMethodFn bindForeignMethodFn(WrenVM *v,
   if (strcmp(signature, "setNum(_,_)") == 0) return cm_setNum;
   if (strcmp(signature, "getStr(_)") == 0) return cm_getStr;
   if (strcmp(signature, "getNum(_)") == 0) return cm_getNum;
+  if (strcmp(signature, "memFree()") == 0) return cm_memFree;
   return NULL;
+}
+
+static void errorFn(WrenVM *v, WrenErrorType type, const char *module,
+                    int line, const char *message) {
+  (void)v;
+  if (type == WREN_ERROR_COMPILE) {
+    printf("[%s line %d] Compile Error: %s\n", module, line, message);
+  } else if (type == WREN_ERROR_RUNTIME) {
+    printf("[line %d in %s] Runtime Error: %s\n", line, module, message);
+  } else {
+    printf("  [file %s line %d]\n", module, line);
+  }
 }
 
 // ---------------------------
@@ -168,6 +191,7 @@ void wren_ext_init(void) {
   wrenInitConfiguration(&config);
   config.reallocateFn = reallocate;
   config.writeFn = writeFn;
+  config.errorFn = errorFn;
   config.loadModuleFn = loadModuleFn;
   config.bindForeignMethodFn = bindForeignMethodFn;
   vm = wrenNewVM(&config);

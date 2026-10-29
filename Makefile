@@ -82,7 +82,7 @@ LFLAGS += --strip-all
 LFLAGS += --gc-sections
 LFLAGS += --lto-O3
 # stack and memory size
-LFLAGS += --export-memory=memory
+# (lld>=19: --export-memory=memory; lld14 exports memory by default)
 LFLAGS += --stack-first
 LFLAGS += -z stack-size=262144
 LFLAGS += --initial-memory=4194304 # 4M

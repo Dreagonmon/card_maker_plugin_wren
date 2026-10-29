@@ -23,20 +23,14 @@ export async function loadWasmEnv(source: string) {
 const scripts = `
 import "cardmaker" for cardmaker
 
-var read_file = |path| {
-    // wren has no vfile access from script side in this build;
-    // demo just uses the host variable API.
-    return null
-}
-
 cardmaker.setStr("result", "你好世界")
 cardmaker.setNum("free", 123)
 var r = cardmaker.getStr("result")
 var f = cardmaker.getNum("free")
 var m = cardmaker.getStr("nope")
-System.print("result = " + r)
-System.print("free = " + f)
-System.print("missing = " + m)
+System.print("result = %(r)")
+System.print("free = %(f)")
+System.print("missing = %(m)")
 cardmaker.setStr("@draw", "fillstyle:#ff0000")
 cardmaker.setStr("@draw", "fillrect:10|10|80|80")
 System.print("done")
