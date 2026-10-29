@@ -1,0 +1,6 @@
+[submodule "lib/wren"]
+	path = lib/wren
+	url = https://github.com/wren-lang/wren.git
+[submodule "lib/openlibm"]
+	path = lib/openlibm
+	url = https://github.com/JuliaMath/openlibm.git
