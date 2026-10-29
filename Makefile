@@ -44,14 +44,28 @@ LIB_SRC += $(wildcard lib/libc/stdio/*.c)
 LIB_SRC += $(wildcard lib/libc/time/*.c)
 LIB_OBJ := $(LIB_SRC:%.c=$(LIB_BUILD)/%.o)
 # wren vm sources (compiled into this module)
+# Optional wren VM features, disabled with: make META=0 / make RANDOM=0
+#   META   — Meta.eval / Meta.compile / Meta.getModuleVariables
+#   RANDOM — random module (Random.new / int / float / seed / ...)
+META ?= 1
+RANDOM ?= 1
 WREN_SRC += $(wildcard lib/wren/src/vm/*.c)
+ifeq ($(META),1)
+WREN_SRC += lib/wren/src/optional/wren_opt_meta.c
+endif
+ifeq ($(RANDOM),1)
+WREN_SRC += lib/wren/src/optional/wren_opt_random.c
+endif
 WREN_OBJ := $(WREN_SRC:%.c=$(BUILD)/%.o)
 SRC += $(wildcard src/*.c)
 OBJ := $(SRC:%.c=$(BUILD)/%.o)
 
 # source definition
-CFLAGS += -DWREN_OPT_RANDOM=0
-CFLAGS += -DWREN_OPT_META=0
+CFLAGS += -DWREN_OPT_RANDOM=$(RANDOM)
+CFLAGS += -DWREN_OPT_META=$(META)
+ifneq (,$(filter 1,$(META) $(RANDOM)))
+CFLAGS += -Ilib/wren/src/optional
+endif
 CFLAGS += -DPRINTF_ALIAS_STANDARD_FUNCTION_NAMES_HARD
 
 # target and features
@@ -145,6 +159,8 @@ cleanlib:
 	@$(ECHO) Cleaning library...
 	@$(RM_F) $(LIB_OBJ)
 	@$(RM_F) $(WREN_OBJ)
+	@$(RM_F) $(BUILD)/lib/wren/src/optional/wren_opt_meta.o
+	@$(RM_F) $(BUILD)/lib/wren/src/optional/wren_opt_random.o
 	@$(RM_F) $(LIBC_A)
 	@$(MAKE) -C lib/openlibm clean
 	@$(ECHO) done.

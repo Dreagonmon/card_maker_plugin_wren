@@ -8,7 +8,10 @@ extern "C" {
 
 #define CLOCKS_PER_SEC  ((long long) 1000000)
 
+typedef long long time_t;
+
 long long clock(void);
+time_t time(time_t *tloc);
 
 #ifdef __cplusplus
 }
