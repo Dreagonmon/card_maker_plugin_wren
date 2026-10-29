@@ -26,10 +26,8 @@ CFLAGS += -Ilib/env
 CFLAGS += -Ilib/libc
 CFLAGS += -Isrc
 
-# walloc (lib/libc/stdlib/_walloc.h) type-puns char page memory with
-# page_header/large_object structs; clang >= 22 miscompiles this under
-# strict aliasing (heap metadata desyncs -> ASSERT trap).
-CFLAGS += -fno-strict-aliasing
+# malloc backend is dlmalloc 2.8.6 (lib/libc/stdlib/dlmalloc/), which is
+# strict-aliasing clean; the old walloc backend needed -fno-strict-aliasing.
 
 # source
 RUNNER_SRC += $(wildcard scripts/*.js)
@@ -41,6 +39,7 @@ LIB_SRC += $(wildcard lib/libc/ctype/*.c)
 LIB_SRC += $(wildcard lib/libc/errno/*.c)
 LIB_SRC += $(wildcard lib/libc/string/*.c)
 LIB_SRC += $(wildcard lib/libc/stdlib/*.c)
+LIB_SRC += $(filter-out lib/libc/stdlib/dlmalloc/dlmalloc.c,$(wildcard lib/libc/stdlib/dlmalloc/*.c))
 LIB_SRC += $(wildcard lib/libc/stdio/*.c)
 LIB_SRC += $(wildcard lib/libc/time/*.c)
 LIB_OBJ := $(LIB_SRC:%.c=$(LIB_BUILD)/%.o)
